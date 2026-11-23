@@ -57,6 +57,7 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
       failedStage?: string
       lastError?: string
       warning?: string
+      keepOpenByDefault?: boolean
       mode?: { mode: string; preferred: string; reason: string; detail: string }
       effects: unknown[]
       residualResources: unknown[]
@@ -95,7 +96,9 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
       process.exitCode = 1
     }
     const keepOpenState =
-      (flags.has('keep-open') || startsInNewWorkspace(flags)) && isLiveWorkerStart(result.result)
+      (flags.has('keep-open') ||
+        (result.result.keepOpenByDefault ?? startsInNewWorkspace(flags))) &&
+      isLiveWorkerStart(result.result)
         ? await keepWorkerOpen(client, result.result.dispatchId)
         : undefined
     const renderedResult = {
@@ -133,7 +136,7 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
   }
 }
 
-// A worker given its own new workspace is that workspace's chat; closing it frees no space.
+// Hosts that predate keepOpenByDefault keep every new-workspace worker open, its chat.
 function startsInNewWorkspace(flags: Map<string, string | boolean>): boolean {
   const worktree = getOptionalStringFlag(flags, 'worktree')
   return worktree === 'new-child' || worktree === 'new-top-level'
