@@ -36,7 +36,10 @@ const click = (label: string) =>
     [...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!.click()
   )
 const visibleText = () => {
-  const clone = container.cloneNode(true) as HTMLElement
+  const clone = container.cloneNode(true)
+  if (!(clone instanceof HTMLElement)) {
+    return ''
+  }
   clone.querySelectorAll('[hidden]').forEach((node) => node.remove())
   return clone.textContent ?? ''
 }

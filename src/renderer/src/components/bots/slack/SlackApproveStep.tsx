@@ -82,7 +82,8 @@ export function SlackApproveStep({
               readOnly
               value={link.authorizeUrl}
               aria-label={t('bots.slack.approve.linkLabel', 'Slack approval link')}
-              className="min-w-0 flex-1 font-mono"
+              variant="code"
+              className="min-w-0 flex-1"
               onFocus={(event) => event.currentTarget.select()}
             />
             <Button type="button" variant="outline" onClick={() => void onCopy()}>
