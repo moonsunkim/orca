@@ -261,9 +261,7 @@ export function RemoteBrowserPagePane({
     handleRemotePointerDown,
     handleRemotePointerUp,
     handleRemotePointerMove,
-    handleRemoteScreenshotKeyDown,
-    handleRemoteScreenshotPaste,
-    handleRemoteKeyboardProxyText,
+    keyboardProxyHandlers,
     runRemoteEditCommand,
     selectPopupElement
   } = useRemoteBrowserPageInput({
@@ -411,9 +409,7 @@ export function RemoteBrowserPagePane({
         handleRemotePointerDown={handleRemotePointerDown}
         handleRemotePointerUp={handleRemotePointerUp}
         handleRemoteContextMenu={handleRemoteContextMenu}
-        handleRemoteScreenshotKeyDown={handleRemoteScreenshotKeyDown}
-        handleRemoteScreenshotPaste={handleRemoteScreenshotPaste}
-        handleRemoteKeyboardProxyText={handleRemoteKeyboardProxyText}
+        keyboardProxyHandlers={keyboardProxyHandlers}
         handleRemotePointerMove={handleRemotePointerMove}
         annotateOverlays={annotateOverlays}
       />
