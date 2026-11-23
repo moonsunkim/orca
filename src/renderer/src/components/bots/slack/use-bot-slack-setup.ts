@@ -51,8 +51,8 @@ export type BotSlackSetupStep =
   /** `setupState`: the install link this flow installed with, so its identity pick applies at once. */
   | { kind: 'installed'; teamId: string; setupState?: string }
   /** `code` is the desktop error code, so a signed-out failure can offer Sign in; `local`: this
-   *  computer's own account failed, not the bot's host's. `teamId`: the workspace it failed in. */
-  | { kind: 'failed'; code: string; local?: true; teamId?: string }
+   *  computer's own account failed. `teamId`, `handOff`: the workspace and step a retry repeats. */
+  | { kind: 'failed'; code: string; local?: true; teamId?: string; handOff?: true }
 
 /** One open of the dialog; compared by identity. `started`: its setup ran, which it does once. */
 type SetupMount = { readonly openedAt: number; started: boolean }
@@ -72,7 +72,7 @@ export function useBotSlackSetup(
   handOff: (teamId: string) => Promise<void>
   submitToken: (token: string) => Promise<void>
   /** The token form; `teamId`: the workspace whose saved token Slack refused. */
-  pasteToken: (teamId?: string) => void
+  pasteToken: (teamId?: string, mine?: boolean) => void
   /** A paired computer's bot: opens Slack's page on that computer. */
   approve: () => void
   /** A paired computer's bot: a fresh link for `teamId`, opened on that computer at once. */
@@ -206,10 +206,11 @@ export function useBotSlackSetup(
           setStep({ kind: 'token', reconnect: false, error: null })
           return
         }
+        const local = code.ok || undefined
         setStep(
           app.error === 'grant_expired' && code.ok
             ? { kind: 'token', reconnect: true, error: null, teamId, mine: true }
-            : { kind: 'failed', code: app.error, teamId, ...(code.ok ? { local: true } : {}) }
+            : { kind: 'failed', code: app.error, teamId, handOff: true, local }
         )
         return
       }
@@ -348,8 +349,8 @@ export function useBotSlackSetup(
   }, [start])
 
   const pasteToken = useCallback(
-    (lapsed?: string) =>
-      setStep({ kind: 'token', reconnect: lapsed !== undefined, error: null, teamId: lapsed }),
+    (lapsed?: string, mine?: boolean) =>
+      setStep({ kind: 'token', reconnect: Boolean(lapsed), error: null, teamId: lapsed, mine }),
     []
   )
   return {
