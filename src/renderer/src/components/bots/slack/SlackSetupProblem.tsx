@@ -40,7 +40,14 @@ export function slackSetupProblem(
             ...(step.teamId ? { teamId: step.teamId } : {})
           }
         : null
-    default:
+    case 'checking':
+    case 'pick':
+    case 'token':
+    case 'setting-up':
+    case 'ready':
+    case 'waiting':
+    case 'uncertain':
+    case 'installed':
       return null
   }
 }
