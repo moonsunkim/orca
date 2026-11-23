@@ -1,7 +1,7 @@
 // @protected-copy: drawn inside the security-surface setup dialog
 // The Connect Slack dialog's known failures: what happened, one way forward, and the codes under Details.
 import React, { useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { ExternalLink, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DialogFooter } from '@/components/ui/dialog'
 import { DialogDisclosure } from '@/components/ui/dialog-parts'
@@ -116,13 +116,10 @@ function problemWords(
       }
     case 'expired':
       return {
-        headline: t(
-          'bots.slack.problem.expired',
-          'The Slack link expired before the connection was approved.'
-        ),
+        headline: t('bots.slack.problem.expired', 'Slack sign-in didn’t finish.'),
         next: t(
           'bots.slack.problem.expiredNext',
-          'Get a new link and approve the connection in Slack.'
+          'The Slack link expired before anyone approved the connection.'
         )
       }
     case 'token-rejected':
@@ -143,6 +140,7 @@ export function SlackSetupProblemStep({
   hostName,
   onClose,
   onNewLink,
+  onOpenNewLink,
   onReplaceToken
 }: {
   problem: SlackSetupProblem
@@ -150,6 +148,8 @@ export function SlackSetupProblemStep({
   hostName: string | null
   onClose: () => void
   onNewLink: (teamId: string) => void
+  /** A paired computer's bot: a new link, opened on that computer at once. */
+  onOpenNewLink?: (teamId: string) => void
   onReplaceToken: (teamId: string | undefined) => void
 }): React.JSX.Element {
   const t = useTranslate()
@@ -179,8 +179,26 @@ export function SlackSetupProblemStep({
             {t('bots.slack.problem.reconnect', 'Reconnect')}
           </Button>
         )
-      case 'other-user':
       case 'expired':
+        if (onOpenNewLink && hostName) {
+          return (
+            <>
+              <Button variant="outline" onClick={() => onNewLink(problem.teamId)}>
+                {t('bots.slack.setup.newLink', 'Get a new link')}
+              </Button>
+              <Button autoFocus onClick={() => onOpenNewLink(problem.teamId)}>
+                <ExternalLink />
+                {t('bots.slack.approve.openOn', 'Open Slack on {{host}}', { host: hostName })}
+              </Button>
+            </>
+          )
+        }
+        return (
+          <Button autoFocus onClick={() => onNewLink(problem.teamId)}>
+            {t('bots.slack.setup.newLink', 'Get a new link')}
+          </Button>
+        )
+      case 'other-user':
         return (
           <Button autoFocus onClick={() => onNewLink(problem.teamId)}>
             {t('bots.slack.setup.newLink', 'Get a new link')}
@@ -200,6 +218,11 @@ export function SlackSetupProblemStep({
         {problem.kind === 'reconnecting' ? (
           <p role="status" className="flex items-center gap-2 text-sm">
             <Loader2 className="size-4 animate-spin" />
+            {headline}
+          </p>
+        ) : problem.kind === 'expired' ? (
+          // Nothing broke: the link ran out before anyone used it.
+          <p role="alert" className="text-sm">
             {headline}
           </p>
         ) : (

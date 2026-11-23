@@ -13,9 +13,12 @@ import { botSlackErrorMessage } from './bot-slack-copy'
 import { useBotHostLabel } from '../use-bot-host-label'
 import { hostBots, knownSlackTeam, otherSlackTeams } from './slack-setup-teams'
 import {
+  openedKey,
+  openedSlackPages,
   slackInstallLink as installLink,
   slackInstallState,
   useSlackLinkExpired,
+  type OpenedSlackPage,
   type SlackInstallLink
 } from './slack-install-link'
 
@@ -51,13 +54,6 @@ export type BotSlackSetupStep =
    *  computer's own account failed, not the bot's host's. `teamId`: the workspace it failed in. */
   | { kind: 'failed'; code: string; local?: true; teamId?: string }
 
-type OpenedSlackPage = { returnUrl: string | null; link: SlackInstallLink }
-
-// Slack's page already open (or its link copied) for this bot and workspace in this open of the
-// dialog: the flow mounts anew when it comes back from the pill, and must not open Slack again.
-const openedSlackPages = new Map<string, OpenedSlackPage>()
-const openedKey = (bot: Bot, teamId: string): string => `${bot.hostId}\0${bot.id}\0${teamId}`
-
 /** One open of the dialog; compared by identity. `started`: its setup ran, which it does once. */
 type SetupMount = { readonly openedAt: number; started: boolean }
 
@@ -79,6 +75,8 @@ export function useBotSlackSetup(
   pasteToken: (teamId?: string) => void
   /** A paired computer's bot: opens Slack's page on that computer. */
   approve: () => void
+  /** A paired computer's bot: a fresh link for `teamId`, opened on that computer at once. */
+  openNewLink: (teamId: string) => Promise<void>
   /** A paired computer's bot: the link, for approving in another browser. */
   copyLink: () => Promise<void>
 } {
@@ -112,10 +110,27 @@ export function useBotSlackSetup(
     [remember]
   )
 
+  // Slack's page on the bot's computer; stays on the step when nothing there could open it.
+  const openOnHost = useCallback(
+    (teamId: string, link: SlackInstallLink): boolean => {
+      const opened = openBotHostPageOrSay(bot.hostId, link.authorizeUrl, { bot, local: 'system' })
+      if (opened === 'unrouted') {
+        return false
+      }
+      wait(teamId, link, false)
+      if (opened === 'orca-browser') {
+        onStepAside?.()
+      }
+      return true
+    },
+    [bot, wait, onStepAside]
+  )
+
   // This computer's own bots open Slack's page at once, as before. A paired computer's wait for
-  // Approve in Slack, so Copy link stays in reach before the dialog folds into the pill.
+  // Open Slack, so Copy link stays in reach before the dialog folds into the pill, unless the
+  // owner already asked to open it.
   const install = useCallback(
-    async (teamId: string, link: SlackInstallLink, mount: SetupMount | null) => {
+    async (teamId: string, link: SlackInstallLink, mount: SetupMount | null, openNow = false) => {
       // The wait reads this attempt's state, never the last one's refusal.
       const fresh = refreshBotSlack(bot)
       const current = (): boolean => mount !== null && mounted.current === mount
@@ -138,23 +153,23 @@ export function useBotSlackSetup(
       }
       if (bot.hostId === LOCAL_EXECUTION_HOST_ID) {
         wait(teamId, link, false)
-      } else {
+      } else if (!openNow || !openOnHost(teamId, link)) {
         setStep({ kind: 'ready', teamId, link })
       }
     },
-    [bot, onStepAside, remember, wait]
+    [bot, onStepAside, remember, wait, openOnHost]
   )
 
   const setUp = useCallback(
     // `mount` is the one the action began in.
-    async (teamId: string, mount = mounted.current) => {
+    async (teamId: string, mount = mounted.current, openNow = false) => {
       setStep({ kind: 'setting-up' })
       const result = await botSlackCalls(bot.hostId).setUpApp({
         botId: bot.id,
         teamId
       })
       if (result.ok) {
-        await install(teamId, installLink(result.value), mount)
+        await install(teamId, installLink(result.value), mount, openNow)
         return
       }
       setStep(
@@ -282,19 +297,10 @@ export function useBotSlackSetup(
     if (step.kind !== 'ready' && step.kind !== 'waiting') {
       return
     }
-    const link = step.link
-    if (!link) {
-      return
+    if (step.link) {
+      openOnHost(step.teamId, step.link)
     }
-    const opened = openBotHostPageOrSay(bot.hostId, link.authorizeUrl, { bot, local: 'system' })
-    if (opened === 'unrouted') {
-      return
-    }
-    wait(step.teamId, link, false)
-    if (opened === 'orca-browser') {
-      onStepAside?.()
-    }
-  }, [step, bot, wait, onStepAside])
+  }, [step, openOnHost])
 
   const copyLink = useCallback(async () => {
     if ((step.kind !== 'ready' && step.kind !== 'waiting') || !step.link) {
@@ -354,15 +360,7 @@ export function useBotSlackSetup(
     submitToken,
     pasteToken,
     approve,
+    openNewLink: (newLinkTeam: string) => setUp(newLinkTeam, mounted.current, true),
     copyLink
-  }
-}
-
-/** A new open of the dialog is a fresh attempt, which opens Slack's page again. */
-export function forgetOpenedSlackPages(bot: Pick<Bot, 'hostId' | 'id'>): void {
-  for (const key of openedSlackPages.keys()) {
-    if (key.startsWith(`${bot.hostId}\0${bot.id}\0`)) {
-      openedSlackPages.delete(key)
-    }
   }
 }
