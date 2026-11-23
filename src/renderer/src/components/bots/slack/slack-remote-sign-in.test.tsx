@@ -191,6 +191,8 @@ describe('2a/2b: the Slack approval link', () => {
     expect(view.panel.hidden).toBe(false)
     expect(buttons()).toContain('Copied')
     expect(buttons()).not.toContain('Copy link')
-    expect(view.panel.querySelector('[role="status"]')?.textContent).toBe('Waiting for Slack…')
+    expect(view.panel.querySelector('[role="status"]')?.textContent).toBe(
+      'Waiting for Slack…Get a new link'
+    )
   })
 })

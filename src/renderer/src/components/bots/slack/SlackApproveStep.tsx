@@ -26,7 +26,7 @@ export function SlackApproveStep({
   onOpen: () => void
   /** `byHand`: copied from the field, so the clipboard already has the link. */
   onCopy: (byHand?: boolean) => Promise<void>
-  /** A fresh link, for a copied one whose end the cloud didn't say: it never shows as expired. */
+  /** A fresh link while a copied one waits: a declined approval, or a link with no end time. */
   onNewLink: () => void
 }): React.JSX.Element {
   const t = useTranslate()
@@ -107,11 +107,10 @@ export function SlackApproveStep({
             <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="size-3.5 animate-spin" />
               {t('bots.slack.setup.waiting', 'Waiting for Slack…')}
-              {link.expiresAt === null ? (
-                <Button type="button" variant="link-muted" size="inline" onClick={onNewLink}>
-                  {t('bots.slack.setup.newLink', 'Get a new link')}
-                </Button>
-              ) : null}
+              {/* A declined or unanswered approval never ends this wait on its own. */}
+              <Button type="button" variant="link-muted" size="inline" onClick={onNewLink}>
+                {t('bots.slack.setup.newLink', 'Get a new link')}
+              </Button>
             </p>
           ) : null}
         </div>
