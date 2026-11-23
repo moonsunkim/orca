@@ -6,13 +6,21 @@ import { Button } from '@/components/ui/button'
 import { DialogFooter } from '@/components/ui/dialog'
 import { DialogDisclosure } from '@/components/ui/dialog-parts'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
-import { connectRuntimeHostAndReloadProjects } from '@/components/status-bar/host-connections/runtime-environment-explicit-connect'
+import { toast } from 'sonner'
+import { connectRuntimeEnvironmentAndRecordStatus } from '@/components/status-bar/host-connections/runtime-environment-explicit-connect'
+import { BOT_SLACK_DESKTOP_ERRORS } from '../../../../../shared/connector-bot-slack-contract'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import type { BotHostOutage } from '../use-bot-host-outage'
 import type { BotSlackSetupStep } from './use-bot-slack-setup'
 
-/** Slack refused the app or the token that makes it: both are fixed with a new token. */
-const TOKEN_REJECTED_CODES: ReadonlySet<string> = new Set(['slack_refused', 'grant_expired'])
+/** Slack refused the saved token itself; `slack_refused` is any refusal, so it keeps its own words. */
+const TOKEN_REJECTED = 'grant_expired'
+
+/** What an unreachable server's calls fail with; a refusal or this computer's own failure is not the outage's. */
+const failedForHost = (step: BotSlackSetupStep): boolean =>
+  step.kind === 'failed' &&
+  !step.local &&
+  (step.code === BOT_SLACK_DESKTOP_ERRORS.failed || !step.code)
 
 export type SlackSetupProblem =
   | { kind: 'reconnecting' | 'offline'; code: string; environmentId: string }
@@ -31,10 +39,10 @@ export function slackSetupProblem(
       return { kind: step.kind, teamId: step.teamId }
     case 'failed':
       // This computer's own sign-in lapsing is answered in place, whatever the server is doing.
-      if (outage?.reconnectable && !step.local) {
+      if (outage?.reconnectable && failedForHost(step)) {
         return { kind: outage.kind, code: step.code, environmentId: outage.environmentId }
       }
-      return TOKEN_REJECTED_CODES.has(step.code)
+      return step.code === TOKEN_REJECTED
         ? {
             kind: 'token-rejected',
             code: step.code,
@@ -55,36 +63,31 @@ export function slackSetupProblem(
 }
 
 /**
- * A failure while the server was away, or a request it dropped mid-way, runs again once the server is
- * back, as the waiting line says: the same step for the same workspace; only a failed first check
- * starts over. An outage during an idle step arms nothing.
+ * A failure while the server was away, or a request it dropped mid-way, starts again once the server
+ * is back, as the waiting line says: that workspace's Slack state is read again first, as Try again
+ * does, so an app the dropped request left half-made still asks before another is made. An outage
+ * during an idle step, or a failure of its own, arms nothing.
  */
 export function useResumeWhenHostReturns(
   step: BotSlackSetupStep,
   outage: BotHostOutage | null,
-  run: {
-    retry: () => Promise<void>
-    setUp: (teamId: string) => Promise<void>
-    handOff: (teamId: string) => Promise<void>
-  }
+  retry: (teamId?: string) => Promise<void>
 ): void {
   const waited = useRef(false)
   // Any outage, including one Reconnect can't end: the wait is over only when the server answers.
   const hostDown = outage !== null
-  const { retry, setUp, handOff } = run
   useEffect(() => {
     const pending = step.kind === 'checking' || step.kind === 'setting-up'
-    if (hostDown && (pending || step.kind === 'failed')) {
+    if (hostDown && (pending || failedForHost(step))) {
       waited.current = true
-    } else if (waited.current && step.kind === 'failed') {
+    } else if (waited.current && step.kind === 'failed' && failedForHost(step)) {
       waited.current = false
-      const team = step.teamId
-      void (team ? (step.handOff ? handOff : setUp)(team) : retry())
+      void retry(step.teamId)
     } else if (!pending) {
-      // Settled some other way: a later failure is not this outage's.
+      // Settled some other way, or failed for its own reason: not this outage's to repeat.
       waited.current = false
     }
-  }, [step, hostDown, retry, setUp, handOff])
+  }, [step, hostDown, retry])
 }
 
 function problemCode(problem: SlackSetupProblem): string {
@@ -211,11 +214,21 @@ export function SlackSetupProblemStep({
             disabled={connecting}
             onClick={() => {
               setConnecting(true)
-              void connectRuntimeHostAndReloadProjects(problem.environmentId).finally(() => {
-                if (mountedRef.current) {
-                  setConnecting(false)
+              // Connect only: the projects refresh already runs once the host is reachable again.
+              void connectRuntimeEnvironmentAndRecordStatus(problem.environmentId, 5_000).then(
+                (reachable) => {
+                  if (!reachable) {
+                    toast.error(
+                      t('bots.slack.problem.reconnectFailed', 'Orca still can’t reach {{host}}.', {
+                        host
+                      })
+                    )
+                  }
+                  if (mountedRef.current) {
+                    setConnecting(false)
+                  }
                 }
-              })
+              )
             }}
           >
             {t('bots.slack.problem.reconnect', 'Reconnect')}
