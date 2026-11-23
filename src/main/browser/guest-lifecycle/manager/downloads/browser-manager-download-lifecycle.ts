@@ -6,8 +6,23 @@ import type {
 } from '../../../../../shared/browser/guest-lifecycle/browser-guest-events'
 import type { ActiveDownload } from './browser-active-download'
 import { BrowserManagerDownloadCreation } from './browser-manager-download-creation'
+import { hasClaimedBrowserDownloadRoute } from '../../../client-hosts/file-transfers/browser-client-download-routing'
+import { BROWSER_CLIENT_FILE_CHANNEL_TRANSFER_MAX_BYTES } from '../../../../../shared/browser/client-hosting/browser-client-file-channel-protocol'
 
 export abstract class BrowserManagerDownloadLifecycle extends BrowserManagerDownloadCreation {
+  /** An SSH host's agent claimed this tab's next download, whose file goes back to that host.
+   *  Extension downloads never take that claim, so they stay refused. */
+  awaitsHostRelayedDownload(guestWebContentsId: number, item: Electron.DownloadItem): boolean {
+    if (this.extensionDownloads.has(item)) {
+      return false
+    }
+    const rootGuestWebContentsId =
+      this.resolvePopupOwnerContext(guestWebContentsId)?.rootGuestWebContentsId ??
+      guestWebContentsId
+    const savePath = this.downloadClaimsByGuestId.get(rootGuestWebContentsId)?.savePath
+    return savePath !== undefined && hasClaimedBrowserDownloadRoute(savePath)
+  }
+
   protected bindDownloadToTab(downloadId: string, browserTabId: string): void {
     const download = this.downloadsById.get(downloadId)
     if (!download) {
@@ -115,6 +130,21 @@ export abstract class BrowserManagerDownloadLifecycle extends BrowserManagerDown
     renderer.send('browser:download-finished', payload)
   }
 
+  /** Another host takes no more than the transfer cap; stop staging bytes it would refuse. */
+  protected stopOversizedRemoteDownload(download: ActiveDownload): boolean {
+    if (
+      !download.clientRoute ||
+      download.receivedBytes <= BROWSER_CLIENT_FILE_CHANNEL_TRANSFER_MAX_BYTES
+    ) {
+      return false
+    }
+    // Deferred like the other cancels made from a native progress update.
+    setImmediate(() =>
+      this.cancelDownloadInternal(download.downloadId, 'The file is larger than 64 MB.', 'failed')
+    )
+    return true
+  }
+
   protected async settleClientHostedDownload(
     download: ActiveDownload,
     status: BrowserDownloadFinishedEvent['status'],
@@ -151,6 +181,15 @@ export abstract class BrowserManagerDownloadLifecycle extends BrowserManagerDown
         'Could not save the download to the remote workspace.'
       )
     }
+  }
+
+  cancelDownload(args: { downloadId: string; senderWebContentsId: number }): boolean {
+    const download = this.downloadsById.get(args.downloadId)
+    if (!download || download.rendererWebContentsId !== args.senderWebContentsId) {
+      return false
+    }
+    this.cancelDownloadInternal(args.downloadId, 'Canceled.')
+    return true
   }
 
   protected cancelDownloadInternal(
