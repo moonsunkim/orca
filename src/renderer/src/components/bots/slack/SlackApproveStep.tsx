@@ -23,7 +23,8 @@ export function SlackApproveStep({
   /** Copy link was used: the dialog waits for Slack. */
   copied: boolean
   onOpen: () => void
-  onCopy: () => Promise<void>
+  /** `byHand`: copied from the field, so the clipboard already has the link. */
+  onCopy: (byHand?: boolean) => Promise<void>
 }): React.JSX.Element {
   const t = useTranslate()
   const panelId = useId()
@@ -87,8 +88,9 @@ export function SlackApproveStep({
               variant="code"
               className="min-w-0 flex-1"
               onFocus={(event) => event.currentTarget.select()}
-              // A link copied by hand is as good as Copy link: the dialog waits for Slack.
-              onCopy={() => void onCopy()}
+              // A link copied by hand is as good as Copy link: the dialog waits for Slack. Writing
+              // the clipboard again here would re-enter a copy fallback that fires this event.
+              onCopy={() => void onCopy(true)}
             />
             <Button type="button" variant="outline" onClick={() => void onCopy()}>
               {copied ? <Check /> : <Copy />}

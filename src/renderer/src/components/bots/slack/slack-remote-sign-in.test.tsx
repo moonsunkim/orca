@@ -182,7 +182,7 @@ describe('2a/2b: the Slack approval link', () => {
     act(() => {
       view.panel.querySelector('input')!.dispatchEvent(new Event('copy', { bubbles: true }))
     })
-    expect(view.onCopy).toHaveBeenCalled()
+    expect(view.onCopy).toHaveBeenCalledWith(true)
   })
 
   it('2b: after Copy link the section stays open, says Copied, and waits for Slack', () => {

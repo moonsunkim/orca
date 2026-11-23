@@ -78,7 +78,8 @@ export function useBotSlackSetup(
   /** A paired computer's bot: a fresh link for `teamId`, opened on that computer at once. */
   openNewLink: (teamId: string) => Promise<void>
   /** A paired computer's bot: the link, for approving in another browser. */
-  copyLink: () => Promise<void>
+  /** `byHand`: already copied from the field, so only the dialog waits. */
+  copyLink: (byHand?: boolean) => Promise<void>
 } {
   // Subscribed so the host's bot list is read when setup starts.
   useBots()
@@ -295,22 +296,22 @@ export function useBotSlackSetup(
   )
 
   const approve = useCallback(() => {
-    if (step.kind !== 'ready' && step.kind !== 'waiting') {
-      return
-    }
-    if (step.link) {
+    if ((step.kind === 'ready' || step.kind === 'waiting') && step.link) {
       openOnHost(step.teamId, step.link)
     }
   }, [step, openOnHost])
 
-  const copyLink = useCallback(async () => {
-    if ((step.kind !== 'ready' && step.kind !== 'waiting') || !step.link) {
-      return
-    }
-    const { teamId: copiedTeam, link } = step
-    await window.api.ui.writeClipboardText(link.authorizeUrl)
-    wait(copiedTeam, link, true)
-  }, [step, wait])
+  const copyLink = useCallback(
+    async (byHand = false) => {
+      if ((step.kind === 'ready' || step.kind === 'waiting') && step.link) {
+        if (!byHand) {
+          await window.api.ui.writeClipboardText(step.link.authorizeUrl)
+        }
+        wait(step.teamId, step.link, true)
+      }
+    },
+    [step, wait]
+  )
 
   const link = step.kind === 'waiting' || step.kind === 'ready' ? step.link : null
   const expired = useSlackLinkExpired(link?.expiresAt ?? null)
