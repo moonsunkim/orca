@@ -228,9 +228,15 @@ export function SlackSetupProblemStep({
               <Button variant="outline" onClick={() => onNewLink(problem.teamId)}>
                 {t('bots.slack.setup.newLink', 'Get a new link')}
               </Button>
-              <Button autoFocus onClick={() => onOpenNewLink(problem.teamId)}>
+              <Button
+                autoFocus
+                className="min-w-0 shrink"
+                onClick={() => onOpenNewLink(problem.teamId)}
+              >
                 <ExternalLink />
-                {t('bots.slack.approve.openOn', 'Open Slack on {{host}}', { host: hostName })}
+                <span className="truncate">
+                  {t('bots.slack.approve.openOn', 'Open Slack on {{host}}', { host: hostName })}
+                </span>
               </Button>
             </>
           )

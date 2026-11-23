@@ -58,11 +58,13 @@ export function SlackApproveStep({
       <p className="text-sm">
         {t('bots.slack.setup.ready', 'Your Slack app is ready. Approve it in Slack to finish.')}
       </p>
-      <Button autoFocus className="w-full" onClick={onOpen}>
+      <Button autoFocus className="w-full min-w-0" onClick={onOpen}>
         <ExternalLink />
-        {hostName
-          ? t('bots.slack.approve.openOn', 'Open Slack on {{host}}', { host: hostName })
-          : t('bots.slack.setup.approve', 'Approve in Slack')}
+        <span className="truncate">
+          {hostName
+            ? t('bots.slack.approve.openOn', 'Open Slack on {{host}}', { host: hostName })
+            : t('bots.slack.setup.approve', 'Approve in Slack')}
+        </span>
       </Button>
       <div>
         <Button
@@ -85,6 +87,8 @@ export function SlackApproveStep({
               variant="code"
               className="min-w-0 flex-1"
               onFocus={(event) => event.currentTarget.select()}
+              // A link copied by hand is as good as Copy link: the dialog waits for Slack.
+              onCopy={() => void onCopy()}
             />
             <Button type="button" variant="outline" onClick={() => void onCopy()}>
               {copied ? <Check /> : <Copy />}

@@ -279,6 +279,25 @@ export const offerAnotherWay = scene({ server: { state: 'not_created' } }, () =>
   whenShown(USE_HERE, 'Set up another way')
 )
 
+// First setup: a token typed before this desktop's account is read keeps the form when the offer lands.
+export const offerLateWhileTyping = scene(
+  { server: { state: 'not_created' }, signedInLate: true },
+  async () => {
+    await whenShown('Configuration refresh token')
+    const field = document.querySelector<HTMLInputElement>('input[type="password"]')
+    field?.focus()
+    if (field) {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+        field,
+        'xoxe-1-made-up-example-token'
+      )
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    useAppStore.setState({ orcaProfileAuthStatus: store.orcaProfileAuthStatus })
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+)
+
 // One line per workspace.
 export const offerTwoWorkspaces = scene(
   { server: { state: 'not_created' }, mineInLabs: true },

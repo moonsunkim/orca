@@ -96,7 +96,8 @@ function BotSlackSetupFlow({
   }, [away, settled, comeBack])
   const ownEmail = useAppStore((state) => state.orcaProfileAuthStatus?.cloud?.email ?? null)
   const [checkedSlack, setCheckedSlack] = useState(false)
-  // Set up another way: the token form instead of this computer's offered sign-in.
+  // The token form instead of this computer's offered sign-in: chosen, or already in use when the
+  // offer arrives, so a late offer never takes away a token being typed.
   const [anotherWay, setAnotherWay] = useState(false)
   const checkboxId = useId()
 
@@ -218,22 +219,24 @@ function BotSlackSetupFlow({
             onAnotherWay={() => setAnotherWay(true)}
           />
         ) : (
-          <SlackConfigTokenForm
-            hostId={bot.hostId}
-            aside={
-              offer && !anotherWay ? (
-                <SlackHandOffLines
-                  email={offer.email}
-                  teamIds={offer.teamIds}
-                  onUse={(useTeamId) => void handOff(useTeamId)}
-                />
-              ) : null
-            }
-            submitLabel={t('bots.slack.setup.create', 'Create Slack app')}
-            busy={false}
-            error={step.error}
-            onSubmit={(token) => void submitToken(token)}
-          />
+          <div onFocus={() => setAnotherWay(true)}>
+            <SlackConfigTokenForm
+              hostId={bot.hostId}
+              aside={
+                offer && offer.teamIds.length > 1 ? (
+                  <SlackHandOffLines
+                    email={offer.email}
+                    teamIds={offer.teamIds}
+                    onUse={(useTeamId) => void handOff(useTeamId)}
+                  />
+                ) : null
+              }
+              submitLabel={t('bots.slack.setup.create', 'Create Slack app')}
+              busy={false}
+              error={step.error}
+              onSubmit={(token) => void submitToken(token)}
+            />
+          </div>
         )
       case 'ready':
         return (

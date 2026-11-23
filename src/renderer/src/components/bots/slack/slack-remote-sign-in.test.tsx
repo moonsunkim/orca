@@ -176,6 +176,15 @@ describe('2a/2b: the Slack approval link', () => {
     expect(view.onCopy).toHaveBeenCalled()
   })
 
+  it('a link copied by hand from the field counts as Copy link', () => {
+    const view = show(false)
+    act(() => view.toggle.click())
+    act(() => {
+      view.panel.querySelector('input')!.dispatchEvent(new Event('copy', { bubbles: true }))
+    })
+    expect(view.onCopy).toHaveBeenCalled()
+  })
+
   it('2b: after Copy link the section stays open, says Copied, and waits for Slack', () => {
     const view = show(true)
     expect(view.panel.hidden).toBe(false)

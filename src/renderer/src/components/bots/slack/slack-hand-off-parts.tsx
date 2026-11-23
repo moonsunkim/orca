@@ -61,8 +61,13 @@ export function SlackHandOffOfferStep({
           {t('bots.slack.handOff.anotherWay', 'Set up another way')}
         </Button>
         {/* Not focused first: a stray Enter would spend this computer's sign-in. */}
-        <Button type="button" onClick={() => onUse(teamId)}>
-          {device.use}
+        <Button
+          type="button"
+          className="min-w-0 shrink"
+          title={device.use}
+          onClick={() => onUse(teamId)}
+        >
+          <span className="truncate">{device.use}</span>
         </Button>
       </DialogFooter>
     </div>

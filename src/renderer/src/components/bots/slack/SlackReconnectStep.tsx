@@ -253,8 +253,13 @@ export function SlackReconnectStep({
             {t('bots.slack.reconnect.signInAgain', 'Sign in again')}
           </Button>
           {/* Not focused first: a stray Enter would spend this computer's sign-in. */}
-          <Button type="button" onClick={() => onUse(offer.teamId)}>
-            {device.use}
+          <Button
+            type="button"
+            className="min-w-0 shrink"
+            title={device.use}
+            onClick={() => onUse(offer.teamId)}
+          >
+            <span className="truncate">{device.use}</span>
           </Button>
         </DialogFooter>
       ) : null}
