@@ -131,4 +131,22 @@ export class BotItemsWrites extends BotItemsEdits {
       return eventId
     })
   }
+
+  /** Orca's own line on an item, such as why a worker started for it had to start in a terminal.
+   *  It mails no chat: the starter already read the same reason in its receipt. */
+  orcaComment(uid: string, text: string, why: string, now = Date.now()): BotItemWriteOutcome {
+    assertBotItemText('text', text)
+    return this.transaction(() => {
+      this.requireItem(uid)
+      const eventId = this.appendEvent(
+        uid,
+        'commented',
+        { kind: 'orca', why },
+        { text },
+        false,
+        now
+      )
+      return { uid, eventId }
+    })
+  }
 }

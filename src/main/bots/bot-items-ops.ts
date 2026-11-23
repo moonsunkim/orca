@@ -19,6 +19,7 @@ export const BOT_ITEMS_OPS = [
   'close',
   'link',
   'linkStartedWorker',
+  'orcaComment',
   'ownerComment',
   'ownerStatus',
   'ownerSnooze',
