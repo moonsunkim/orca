@@ -21775,6 +21775,12 @@
           "followedUp": "Follow-up",
           "handedOff": "Handed off",
           "task": "Task"
+        },
+        "unnamedRecipient": "an agent",
+        "event": {
+          "followedUp": "Sent follow-up",
+          "update": "Update",
+          "message": "Message"
         }
       },
       "goal": {

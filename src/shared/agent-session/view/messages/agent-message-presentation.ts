@@ -68,7 +68,7 @@ export function agentMessageHeading(
   return 'generic'
 }
 
-export function agentMessageSenderLabel(facts: {
+export function resolveAgentMessageSenderName(facts: {
   localChat: boolean
   /** The bot whose home the sender's chat is in; it names every chat there. */
   botName?: string | null
@@ -76,13 +76,12 @@ export function agentMessageSenderLabel(facts: {
   conversationName?: string | null
   snapshotName?: string | null
   tabLabel?: string | null
-  fallback: string
-}): string {
+}): string | null {
   return (
     (facts.localChat && (facts.botName || facts.customLabel?.trim() || facts.conversationName)) ||
     facts.snapshotName ||
     facts.tabLabel?.trim() ||
-    facts.fallback
+    null
   )
 }
 

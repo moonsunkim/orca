@@ -35,7 +35,7 @@ import {
 
 type Sender = AgentMessageSource['senders'][number]
 
-function lead(heading: AgentMessageHeading, t: Translate): string {
+function lead(heading: AgentMessageHeading, t: Translate, standalone = false): string {
   switch (heading) {
     case 'started':
     case 'started-agent':
@@ -43,16 +43,26 @@ function lead(heading: AgentMessageHeading, t: Translate): string {
     case 'reopened-worker':
       return t('chat.agentMessage.row.reopened', 'Reopened')
     case 'followed-up-worker':
-      return t('chat.agentMessage.row.followedUp', 'Sent follow-up to')
+      return standalone
+        ? t('chat.agentMessage.event.followedUp', 'Sent follow-up')
+        : t('chat.agentMessage.row.followedUp', 'Sent follow-up to')
     case 'handed-off':
-      return t('chat.agentMessage.row.handedOff', 'Handed off to')
+      return standalone
+        ? t('chat.agentMessage.event.handedOff', 'Handed off')
+        : t('chat.agentMessage.row.handedOff', 'Handed off to')
     case 'task':
-      return t('chat.agentMessage.row.task', 'Task from')
+      return standalone
+        ? t('chat.agentMessage.event.task', 'Task')
+        : t('chat.agentMessage.row.task', 'Task from')
     case 'worker':
-      return t('chat.agentMessage.row.update', 'Update from')
+      return standalone
+        ? t('chat.agentMessage.event.update', 'Update')
+        : t('chat.agentMessage.row.update', 'Update from')
     case 'coordinator':
     case 'generic':
-      return t('chat.agentMessage.row.message', 'Message from')
+      return standalone
+        ? t('chat.agentMessage.event.message', 'Message')
+        : t('chat.agentMessage.row.message', 'Message from')
   }
 }
 
@@ -79,11 +89,15 @@ export const MobileNativeChatAgentMessageCard = memo(function MobileNativeChatAg
   const prose = useNativeChatProseText(fontScale)
   const text = mobileNativeChatDisplayCopyText(message)
   const sender = agentMessagePrimarySender(from)
-  const unnamed = t('session.agentMessageAttribution.unnamedSender', 'an agent')
-  const senderName = useMobileAgentMessageName(sender ?? NO_SENDER, unnamed)
+  const heading = agentMessageHeading(from, message)
+  const unnamed =
+    heading === 'followed-up-worker'
+      ? t('chat.agentMessage.unnamedRecipient', 'an agent')
+      : t('session.agentMessageAttribution.unnamedSender', 'an agent')
+  const senderName = useMobileAgentMessageName(sender) ?? unnamed
   const view = useMobileAgentMessageView(sender)
   const { shown, more } = agentMessageSendersShown(from)
-  const words = lead(agentMessageHeading(from, message), t)
+  const words = lead(heading, t)
   const items = message.agentStartItems ?? []
   const merged = message.mergedEvents ?? []
   const canCopy = agentMessageCanCopy(text)
@@ -100,7 +114,7 @@ export const MobileNativeChatAgentMessageCard = memo(function MobileNativeChatAg
       icon={<SenderMark agentType={view.agentType} />}
       // The live state never marks a row failed: a restarted worker would un-fail it.
       badge={view.dot === 'working' ? 'running' : null}
-      label={`${words} ${sender ? senderName : unnamed}${more > 0 ? ` +${more}` : ''}${
+      label={`${words} ${senderName}${from.senders.length > 1 ? ` +${from.senders.length - 1}` : ''}${
         items.length > 0
           ? ` ${t('chat.agentMessage.row.forItems', 'for')} ${items.map((item) => item.title).join(', ')}`
           : ''
@@ -137,15 +151,13 @@ export const MobileNativeChatAgentMessageCard = memo(function MobileNativeChatAg
             />
             {status}
             {merged.map((earlier) => {
-              const earlierWords = earlier.from
-                ? lead(agentMessageHeading(earlier.from, earlier), t)
-                : null
+              const earlierHeading = earlier.from && agentMessageHeading(earlier.from, earlier)
               const earlierText = mobileNativeChatDisplayCopyText(earlier)
               return (
                 <View key={earlier.id} style={styles.mergedEntry}>
                   <View style={styles.mergedMeta}>
-                    {earlierWords && earlierWords !== words ? (
-                      <Text style={styles.mergedWords}>{earlierWords}</Text>
+                    {earlierHeading && lead(earlierHeading, t) !== words ? (
+                      <Text style={styles.mergedWords}>{lead(earlierHeading, t, true)}</Text>
                     ) : null}
                     {earlier.agentStartItems?.length ? (
                       <Text style={styles.mergedWords}>
@@ -204,16 +216,10 @@ export const MobileNativeChatAgentMessageCard = memo(function MobileNativeChatAg
   )
 })
 
-/** Stands in so the name hook runs in every render; its answer is unused without a sender. */
-const NO_SENDER: Sender = {
-  party: { address: '', terminalHandle: null, orcaSessionId: null },
-  name: null
-}
-
 function SenderName({ sender, unnamed }: { sender: Sender; unnamed: string }) {
   return (
     <MobileNativeChatEventName>
-      {useMobileAgentMessageName(sender, unnamed)}
+      {useMobileAgentMessageName(sender) ?? unnamed}
     </MobileNativeChatEventName>
   )
 }
@@ -233,21 +239,23 @@ function OpenSender({
 }): React.JSX.Element | null {
   const t = useMobileTranslation()
   const open = useContext(MobileAgentMessageOpenContext)
-  const name = useMobileAgentMessageName(sender, unnamed)
+  const name = useMobileAgentMessageName(sender)
   if (!open || !agentMessageSenderCanOpen(sender)) {
     return null
   }
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t('chat.agentMessage.open', 'Open {{name}}', { name })}
+      accessibilityLabel={t('chat.agentMessage.open', 'Open {{name}}', {
+        name: name ?? t('session.agentMessageAttribution.unnamedSender', 'an agent')
+      })}
       hitSlop={named ? 8 : 12}
       onPress={() => open(from, sender)}
       style={({ pressed }) => [named && styles.named, pressed && pressedStyle]}
     >
       {named ? (
         <Text numberOfLines={1} style={styles.namedText}>
-          {name}
+          {name ?? unnamed}
         </Text>
       ) : null}
       <ArrowUpRight size={14} color={named ? colors.textPrimary : colors.textMuted} />

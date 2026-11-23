@@ -45,7 +45,7 @@ const provesTerminalGone = (error: unknown) =>
 
 export function openLocatedAgentMessageSender(
   location: LocatedAgentSender,
-  name: string,
+  name: string | undefined,
   click: Click
 ): Promise<void> {
   if (location.sessionId) {
@@ -63,7 +63,7 @@ export function openLocatedAgentMessageSender(
 async function openLocatedChat(
   location: LocatedAgentSender,
   sessionId: string,
-  name: string
+  name: string | undefined
 ): Promise<void> {
   const host = structuredAgentSessionTargetForHost(location.host)
   if (!host) {
@@ -96,7 +96,7 @@ function heldTabId(
  *  on this host, else the host's answer for the pane itself. */
 async function openUnheldTerminal(
   location: LocatedAgentSender,
-  name: string,
+  name: string | undefined,
   click: Click
 ): Promise<void> {
   const host = structuredAgentSessionTargetForHost(location.host)
@@ -166,7 +166,7 @@ export async function focusTerminal(
 
 export function showLookupFailure(
   failure: LookupFailure,
-  name: string,
+  name: string | undefined,
   feedback: StructuredSessionOpenFeedback = structuredSessionOpenFeedback
 ): void {
   if (failure === 'unreachable') {

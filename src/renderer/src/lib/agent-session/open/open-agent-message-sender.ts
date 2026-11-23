@@ -15,7 +15,6 @@ import {
   showLookupFailure
 } from './open-located-agent-message-sender'
 import type { LookupFailure } from './open-located-agent-message-sender'
-import { unnamedSenderLabel } from '@/components/native-chat/messages/agent-senders/native-chat-agent-message-sender-label'
 import {
   agentMessageSenderOpens,
   agentMessageSenderReplacedOnHandle,
@@ -43,7 +42,7 @@ export function openAgentMessageSender(
   chatWorktreeId: string,
   target?: RuntimeClientTarget,
   dispatchId?: string,
-  name?: string
+  name?: string | null
 ): Promise<void> {
   const state = useAppStore.getState()
   // Read at click time, so a stale render cannot open what the host has since rejected.
@@ -54,7 +53,7 @@ export function openAgentMessageSender(
     target,
     dispatchId
   )
-  const label = name ?? sender.name ?? unnamedSenderLabel()
+  const label = name ?? sender.name ?? undefined
   if (resolved.kind === 'located') {
     return openLocatedAgentMessageSender(resolved.location, label, {
       current: () =>
@@ -108,7 +107,7 @@ async function openSender(
   source: AgentMessageSource,
   sender: Sender,
   host: RuntimeClientTarget,
-  name: string
+  name: string | undefined
 ): Promise<void> {
   const { party } = sender
   // Mail identifies senders beyond old terminal handles; tasks carry no mail and resolve coordinators by address.
@@ -134,7 +133,7 @@ async function openSender(
       kind: 'sender',
       party,
       messageIds,
-      displayName: name ?? undefined,
+      displayName: name,
       ...(known ? { fallback: known } : {})
     },
     host

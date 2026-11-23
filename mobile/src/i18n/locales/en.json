@@ -3721,6 +3721,14 @@
         "task": "Task from",
         "update": "Update from",
         "message": "Message from"
+      },
+      "unnamedRecipient": "an agent",
+      "event": {
+        "followedUp": "Sent follow-up",
+        "update": "Update",
+        "message": "Message",
+        "handedOff": "Handed off",
+        "task": "Task"
       }
     },
     "fork": {
