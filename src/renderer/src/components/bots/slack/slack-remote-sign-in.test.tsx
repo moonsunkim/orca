@@ -143,6 +143,7 @@ describe('2a/2b: the Slack approval link', () => {
           copied={copied}
           onOpen={onOpen}
           onCopy={onCopy}
+          onNewLink={() => {}}
         />
       )
     )

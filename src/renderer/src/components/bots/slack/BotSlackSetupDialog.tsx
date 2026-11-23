@@ -246,6 +246,7 @@ function BotSlackSetupFlow({
             copied={false}
             onOpen={approve}
             onCopy={copyLink}
+            onNewLink={() => void setUp(step.teamId)}
           />
         )
       case 'waiting':
@@ -258,6 +259,7 @@ function BotSlackSetupFlow({
               copied
               onOpen={approve}
               onCopy={copyLink}
+              onNewLink={() => void setUp(step.teamId)}
             />
           )
         }
